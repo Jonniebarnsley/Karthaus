@@ -12,10 +12,10 @@ def getIsochrones(dataPath):
 	return d
 
 def getMF(dataPath):
-	return xr.open_dataset(dataPath + "GISModel/fixed-seasonality.nc").h
+	return xr.open_dataset(dataPath + "GISModel/fixed-seasonality.nc")
 
 def getMV(dataPath):
-	return xr.open_dataset(dataPath + "GISModel/variable-seasonality.nc").h
+	return xr.open_dataset(dataPath + "GISModel/variable-seasonality.nc")
 
 
 def getIsochronesOld(dataPath, name):
@@ -114,50 +114,115 @@ def dist(lat1, lon1, lat2, lon2):
 	dst = 2*Rt*np.arcsin( (np.sin(dlat)**2 + (1 - np.sin(dlat)**2 - np.sin(mlat)**2)*np.sin(dlon)**2)**0.5 )
 	return dst
 
-def getListClosestPoint(iso, indx, indy, maxdist):
-	lat1 = iso.lat[indx, indy]
-	lon1 = iso.lon[indx, indy]
-	L = [[lat1, lon1]]
-	indices = np.where(iso.isochrone)
-	indices = list(zip(indices[0], indices[1]))
-	for k in indices:
-		i,j = k
-		lat2 = iso.lat[i, j]
-		lon2 = iso.lon[i, j]
-		if dist(lat1, lon1, lat2, lon2) <= maxdist:
-			L.append([lat2, lon2])
-	return np.array(L)
+# def getListClosestPoint(iso, indx, indy, maxdist):
+# 	lat1 = iso.lat[indx, indy]
+# 	lon1 = iso.lon[indx, indy]
+# 	L = [[lat1, lon1]]
+# 	indices = np.where(iso.isochrone)
+# 	indices = list(zip(indices[0], indices[1]))
+# 	for k in indices:
+# 		i,j = k
+# 		lat2 = iso.lat[i, j]
+# 		lon2 = iso.lon[i, j]
+# 		if dist(lat1, lon1, lat2, lon2) <= maxdist:
+# 			L.append([lat2, lon2])
+# 	return np.array(L)
 
-def getNormalFromPoints(Points):
-	lat = Points[0,:]
-	lon = Points[1,:]
+# def getNormalFromPoints(Points):
+# 	lat = Points[0,:]
+# 	lon = Points[1,:]
 
-	mlat = np.mean(lat)
-	mlon = np.mean(lon)
+# 	mlat = np.mean(lat)
+# 	mlon = np.mean(lon)
 
-	slope, intercept = np.polyfit(lat, lon, 1)
-	return (mlat, mlon), (-slope, 1)
+# 	slope, intercept = np.polyfit(lat, lon, 1)
+# 	return (mlat, mlon), (-slope, 1)
 
-def getDistance2Model(model, point, normal):
-	dx = 0.1
-	condition = True
-	for maxDist in [1e1]:
-		while condition:
-			pass
+# def getDistance2Model(model, point, normal):
+# 	indices = np.where(model)
+# 	indices = list(zip(indices[0], indices[1]))
+# 	minDistance = 1e99
+# 	for k in indices:
+# 		i,j = k
+# 		latPoint = model.x1[i, j]
+# 		lonPoint = model.y1[i, j]
 
+# 		a = normal[1]
+# 		b = -normal[0]
+# 		c = normal[0]*point[1] - normal[1]*point[0]
+
+
+# 		# distance =  np.abs( a* ) / np.sqrt( a*a + b*b )
+# 		if distance < minDistance:
+# 			minDistance = distance
+# 	return minDistance
+
+# def getScore(time=10000):
+# 	fix = get_contour(dataPath+"GISModel/fixed-seasonality.nc", 10000)
+# 	model = fix
+# 	print(fix)
+# 	indices = np.where(model)
+# 	indices = list(zip(indices[0], indices[1]))
+# 	print(indices)
+# 	quit()
+
+# 	iso = getIsochrones(dataPath)
+# 	iso_ = iso.isochrone.values
+# 	iso_[iso_!=time]=0
+# 	iso["isochrone"] = (("x","y"), iso_)
+# 	print(iso)
+# 	# cs = plt.pcolormesh(iso.isochrone)
+# 	# plt.colorbar(cs)
+# 	# plt.show()
+
+# 	print("getListClosestPoint")
+# 	Points = getListClosestPoint(iso, 1160, 990, 10e3)
+# 	print("getNormalFromPoints")
+# 	point, normal = getNormalFromPoints(Points)
+# 	print("getDistance2Model")
+# 	getDistance2Model(fix, point, normal)
 
 def getScore(time=10000):
+	fix = get_contour(dataPath+"GISModel/fixed-seasonality.nc", 10000)
+	fixScoreMap = fix
+	fixPoints = np.where(fix)
+	fixPoints = list(zip(fixPoints[0], fixPoints[1]))
+	# fixPoints = np.array([(float(fix.y[i[0]].values), float(fix.x[i[1]].values)) for i in fixPoints])
+
 	iso = getIsochrones(dataPath)
 	iso_ = iso.isochrone.values
 	iso_[iso_!=time]=0
 	iso["isochrone"] = (("x","y"), iso_)
 	print(iso)
-	# cs = plt.pcolormesh(iso.isochrone)
-	# plt.colorbar(cs)
-	# plt.show()
+	print("\n")	
+	isoPoints = np.where(iso.isochrone)
+	isoPoints = list(zip(isoPoints[0], isoPoints[1]))
+	# isoPoints = np.array([(float(iso.lat[i[0], i[1]].values), float(iso.lon[i[0], i[1]].values)) for i in isoPoints])
 
-	Points = getListClosestPoint(iso, 1160, 990, 10e3)
-	getNormalFromPoints(Points)
+	print("\n")
+	fixScore = 0
+	for i in range(len(fixPoints)):
+		lat2 = fix.lat[fixPoints[i][0], fixPoints[i][1]]
+		lon2 = fix.lon[fixPoints[i][0], fixPoints[i][1]]
+		minDist = 1e99
+		for j in range(len(isoPoints)):
+			lat1 = fix.y[isoPoints[j][0]]
+			lon1 = fix.x[isoPoints[j][1]]
+			distToPoint = dist(lat1, lon1, lat2, lon2)
+			if distToPoint < minDist:
+				minDist = distToPoint
+
+		fixScore += minDist
+		fix.score[fixPoints[i][0], fixPoints[i][1]] = minDist
+		fix.print(minDist)
+
+	cs = plt.pcolormesh(fix.score)
+	plt.colorbar(cs)
+	plt.show()
+
+
+
+
 
 
 getScore()
